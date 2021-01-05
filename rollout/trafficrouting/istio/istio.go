@@ -156,6 +156,52 @@ func (r *Reconciler) reconcileVirtualService(obj *unstructured.Unstructured, des
 	return newObj, len(patches) > 0, err
 }
 
+func (r *Reconciler) reconcileVirtualServiceByHTTPMatchRule(obj *unstructured.Unstructured, desiredHTTPMatchRule []v1alpha1.HTTPMatchRule) (*unstructured.Unstructured, bool, error) {
+	newObj := obj.DeepCopy() // obj is current vsvc
+	httpRoutesI, err := GetHttpRoutesI(newObj)
+	if err != nil {
+		return nil, false, err
+	}
+	httpRoutes, err := GetHttpRoutes(newObj, httpRoutesI)
+	if err != nil {
+		return nil, false, err
+	}
+
+	routes := map[string]bool{}
+	for _, r := range r.rollout.Spec.Strategy.Canary.TrafficRouting.Istio.VirtualService.Routes {
+		routes[r] = true
+	}
+
+	for i, httpRoute := range httpRoutes {
+		if _, ok := routes[httpRoute.Name]; ok {
+			httpRoute.Match = desiredHTTPMatchRule
+		}
+		httpRoutesI[i] = httpRoute
+	}
+	err, newHttpRoutesI := r.transform(httpRoutesI)
+	if err != nil {
+		return nil, false, err
+	}
+	err = unstructured.SetNestedSlice(newObj.Object, newHttpRoutesI, "spec", "http")
+	// modified is always true
+	return newObj, true, err
+}
+
+func (r *Reconciler) transform(input []interface{}) (error, []interface{}) {
+	tmp, err := json.Marshal(input)
+	if err != nil {
+		r.log.Error(err)
+		return err, nil
+	}
+	var result []interface{}
+	err = json.Unmarshal(tmp, &result)
+	if err != nil {
+		r.log.Error(err)
+		return err, nil
+	}
+	return nil, result
+}
+
 func GetHttpRoutesI(obj *unstructured.Unstructured) ([]interface{}, error) {
 	httpRoutesI, notFound, err := unstructured.NestedSlice(obj.Object, "spec", "http")
 	if !notFound {
@@ -214,6 +260,35 @@ func (r *Reconciler) Reconcile(desiredWeight int32) error {
 		return nil
 	}
 	msg := fmt.Sprintf("Updating VirtualService `%s` to desiredWeight '%d'", vsvcName, desiredWeight)
+	r.log.Info(msg)
+	r.recorder.Event(r.rollout, corev1.EventTypeNormal, "UpdatingVirtualService", msg)
+	_, err = client.Update(ctx, modifiedVsvc, metav1.UpdateOptions{})
+	return err
+}
+
+func (r *Reconciler) ReconcileByHTTPMatchRule(desiredHTTPMatchRule []v1alpha1.HTTPMatchRule) error {
+	ctx := context.TODO()
+	var vsvc *unstructured.Unstructured
+	var err error
+	vsvcName := r.rollout.Spec.Strategy.Canary.TrafficRouting.Istio.VirtualService.Name
+	client := r.client.Resource(istioutil.GetIstioGVR(r.defaultAPIVersion)).Namespace(r.rollout.Namespace)
+	if r.istioVirtualServiceLister != nil {
+		vsvc, err = r.istioVirtualServiceLister.Namespace(r.rollout.Namespace).Get(vsvcName)
+	} else {
+		vsvc, err = client.Get(ctx, vsvcName, metav1.GetOptions{})
+	}
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			msg := fmt.Sprintf("Virtual Service `%s` not found", vsvcName)
+			r.recorder.Event(r.rollout, corev1.EventTypeWarning, "VirtualServiceNotFound", msg)
+		}
+		return err
+	}
+	modifiedVsvc, _, err := r.reconcileVirtualServiceByHTTPMatchRule(vsvc, desiredHTTPMatchRule)
+	if err != nil {
+		return err
+	}
+	msg := fmt.Sprintf("Updating VirtualService %s HTTPMatchRequest", vsvcName)
 	r.log.Info(msg)
 	r.recorder.Event(r.rollout, corev1.EventTypeNormal, "UpdatingVirtualService", msg)
 	_, err = client.Update(ctx, modifiedVsvc, metav1.UpdateOptions{})
@@ -293,6 +368,7 @@ type route struct {
 
 // httpRoute fields within the HTTP struct of the Virtual Service that the controller modifies
 type HttpRoute struct {
-	Name  string  `json:"name,omitempty"`
-	Route []route `json:"route,omitempty"`
+	Name  string                   `json:"name,omitempty"`
+	Route []route                  `json:"route,omitempty"`
+	Match []v1alpha1.HTTPMatchRule `json:"match,omitempty"`
 }

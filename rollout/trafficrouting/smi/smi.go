@@ -46,6 +46,11 @@ type Reconciler struct {
 	trafficSplitIsControlledBy func(ts VersionedTrafficSplits) bool
 }
 
+func (r *Reconciler) ReconcileByHTTPMatchRule(desiredHTTPMatchRule []v1alpha1.HTTPMatchRule) error {
+	r.log.Info("smi header based traffic routing is not supported")
+	return nil
+}
+
 type VersionedTrafficSplits struct {
 	ts1 *smiv1alpha1.TrafficSplit
 	ts2 *smiv1alpha2.TrafficSplit

@@ -1,6 +1,7 @@
 package rollout
 
 import (
+	"github.com/argoproj/argo-rollouts/pkg/apis/rollouts/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/argoproj/argo-rollouts/rollout/trafficrouting/alb"
@@ -14,6 +15,7 @@ import (
 // TrafficRoutingReconciler common function across all TrafficRouting implementation
 type TrafficRoutingReconciler interface {
 	Reconcile(desiredWeight int32) error
+	ReconcileByHTTPMatchRule(desiredHTTPMatchRule []v1alpha1.HTTPMatchRule) error
 	Type() string
 }
 
@@ -99,4 +101,33 @@ func (c *rolloutContext) reconcileTrafficRouting() error {
 		c.recorder.Event(c.rollout, corev1.EventTypeWarning, "TrafficRoutingError", err.Error())
 	}
 	return err
+}
+
+func (c *rolloutContext) reconcileHeaderBasedTrafficRouting() error {
+	reconciler, err := c.newTrafficRoutingReconciler(c)
+	if err != nil {
+		return err
+	}
+	if reconciler == nil {
+		c.currentSetHTTPMatchRuleCompleted = true
+		return nil
+	}
+	c.log.Infof("Reconciling TrafficRouting with type '%s'", reconciler.Type())
+
+	currentStep, _ := replicasetutil.GetCurrentCanaryStep(c.rollout)
+	if currentStep == nil {
+		c.log.Info("ReconcileHeaderBasedTrafficRouting: current step is nil")
+		return nil
+	}
+	if currentStep.SetHTTPMatchRule == nil {
+		c.log.Info("ReconcileHeaderBasedTrafficRouting: current step doesn't have SetHTTPMatchRule")
+		return nil
+	}
+	err = reconciler.ReconcileByHTTPMatchRule(currentStep.SetHTTPMatchRule)
+	if err != nil {
+		c.recorder.Event(c.rollout, corev1.EventTypeWarning, "HeaderBasedTrafficRouting", err.Error())
+		return err
+	}
+	c.currentSetHTTPMatchRuleCompleted = true
+	return nil
 }

@@ -54,6 +54,10 @@ func (c *rolloutContext) rolloutCanary() error {
 		return err
 	}
 
+	if err := c.reconcileHeaderBasedTrafficRouting(); err != nil {
+		return err
+	}
+
 	err = c.reconcileExperiments()
 	if err != nil {
 		return err
@@ -224,6 +228,10 @@ func (c *rolloutContext) completedCurrentCanaryStep() bool {
 	currentStepAr := c.currentArs.CanaryStep
 	analysisExistsAndCompleted := currentStepAr != nil && currentStepAr.Status.Phase.Completed()
 	if currentStep.Analysis != nil && analysisExistsAndCompleted && currentStepAr.Status.Phase == v1alpha1.AnalysisPhaseSuccessful {
+		return true
+	}
+	if currentStep.SetHTTPMatchRule != nil && c.currentSetHTTPMatchRuleCompleted {
+		c.currentSetHTTPMatchRuleCompleted = false
 		return true
 	}
 

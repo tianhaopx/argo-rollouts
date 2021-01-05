@@ -342,7 +342,31 @@ type CanaryStep struct {
 	// SetCanaryScale defines how to scale the newRS without changing traffic weight
 	// +optional
 	SetCanaryScale *SetCanaryScale `json:"setCanaryScale,omitempty"`
+	// SetHTTPMatchRule set istio's HTTPMatchRequest to all routes defined in istio.virtualService.routes
+	// +optional
+	SetHTTPMatchRule []HTTPMatchRule `json:"setHTTPMatchRule,omitempty"`
 }
+
+// HTTPMatchRule specifies a set of criterion to be met in order for the
+// rule to be applied to the HTTP request.
+// source: https://github.com/istio/api/blob/1f62aaeb5ee345fde57ac062eee14f80023fa40e/networking/v1beta1/virtual_service.pb.go#L1484
+type HTTPMatchRule struct {
+	Name            string                 `json:"name,omitempty"`
+	Uri             StringMatch            `json:"uri,omitempty"`
+	Scheme          StringMatch            `json:"scheme,omitempty"`
+	Method          StringMatch            `json:"method,omitempty"`
+	Authority       StringMatch            `json:"authority,omitempty"`
+	Headers         map[string]StringMatch `json:"headers,omitempty"`
+	Port            uint32                 `json:"port,omitempty"`
+	SourceLabels    map[string]string      `json:"sourceLabels,omitempty"`
+	Gateways        []string               `json:"gateways,omitempty"`
+	QueryParams     map[string]StringMatch `json:"queryParams,omitempty"`
+	IgnoreUriCase   bool                   `json:"ignoreUriCase,omitempty"`
+	WithoutHeaders  map[string]StringMatch `json:"withoutHeaders,omitempty"`
+	SourceNamespace string                 `json:"sourceNamespace,omitempty"`
+}
+
+type StringMatch map[string]string
 
 // SetCanaryScale defines how to scale the newRS without changing traffic weight
 type SetCanaryScale struct {

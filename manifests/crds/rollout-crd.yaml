@@ -453,6 +453,62 @@ spec:
                                 format: int32
                                 type: integer
                             type: object
+                          setHTTPMatchRule:
+                            items:
+                              properties:
+                                authority:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                gateways:
+                                  items:
+                                    type: string
+                                  type: array
+                                headers:
+                                  additionalProperties:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  type: object
+                                ignoreUriCase:
+                                  type: boolean
+                                method:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                name:
+                                  type: string
+                                port:
+                                  format: int32
+                                  type: integer
+                                queryParams:
+                                  additionalProperties:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  type: object
+                                scheme:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                sourceLabels:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                sourceNamespace:
+                                  type: string
+                                uri:
+                                  additionalProperties:
+                                    type: string
+                                  type: object
+                                withoutHeaders:
+                                  additionalProperties:
+                                    additionalProperties:
+                                      type: string
+                                    type: object
+                                  type: object
+                              type: object
+                            type: array
                           setWeight:
                             format: int32
                             type: integer

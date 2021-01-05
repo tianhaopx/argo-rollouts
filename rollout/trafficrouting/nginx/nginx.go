@@ -41,6 +41,11 @@ type Reconciler struct {
 	log *logrus.Entry
 }
 
+func (r *Reconciler) ReconcileByHTTPMatchRule(desiredHTTPMatchRule []v1alpha1.HTTPMatchRule) error {
+	r.log.Info("nginx header based traffic routing is not supported")
+	return nil
+}
+
 // NewReconciler returns a reconciler struct that brings the canary Ingress into the desired state
 func NewReconciler(cfg ReconcilerConfig) *Reconciler {
 	return &Reconciler{

@@ -41,6 +41,8 @@ type rolloutContext struct {
 
 	newStatus    v1alpha1.RolloutStatus
 	pauseContext *pauseContext
+
+	currentSetHTTPMatchRuleCompleted bool
 }
 
 func (c *rolloutContext) reconcile() error {

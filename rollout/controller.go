@@ -474,6 +474,7 @@ func (c *Controller) newRolloutContext(rollout *v1alpha1.Rollout) (*rolloutConte
 			log:     logCtx,
 		},
 		reconcilerBase: c.reconcilerBase,
+		currentSetHTTPMatchRuleCompleted: false,
 	}
 	return &roCtx, nil
 }
